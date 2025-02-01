@@ -1,0 +1,15 @@
+{
+  "devCommand": "uvicorn app:plantdiseasedetection --host 172.22.158.78 --port 3000",
+  "builds": [
+    {
+      "src": "plantdiseasedetection.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "plantdiseasedetection.py"
+    }
+  ]
+}
