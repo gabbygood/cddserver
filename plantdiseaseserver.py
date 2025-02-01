@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+from tensorflow.keras import layers
 from PIL import Image
 import io
 
@@ -13,6 +13,7 @@ app = FastAPI()
 # Load Model
 MODEL_PATH = "plant_disease_model.h5"
 
+# Attempt to load the model with proper error handling
 try:
     model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': layers.DepthwiseConv2D})
     print("✅ Model loaded successfully!")
@@ -38,6 +39,7 @@ CLASS_NAMES = [
 
 # Preprocess Image
 def preprocess_image(image_data):
+    # Open image from byte data, convert to RGB, and resize
     img = Image.open(io.BytesIO(image_data)).convert("RGB")
     img = img.resize((224, 224))  # Resize to model input size
     img_array = np.array(img).astype("float32") / 255.0  # Normalize
@@ -49,19 +51,24 @@ async def predict(file: UploadFile = File(...)):
     if model is None:
         return JSONResponse(status_code=500, content={"error": "Model not loaded properly."})
 
-    image_data = await file.read()
-    img_array = preprocess_image(image_data)
+    try:
+        # Read the image file
+        image_data = await file.read()
+        img_array = preprocess_image(image_data)
 
-    predictions = model.predict(img_array)
-    class_index = np.argmax(predictions)
-    confidence = float(np.max(predictions))
+        # Predict using the model
+        predictions = model.predict(img_array)
+        class_index = np.argmax(predictions)
+        confidence = float(np.max(predictions))
 
-    response = {
-        "prediction": CLASS_NAMES[class_index],
-        "confidence": confidence
-    }
+        response = {
+            "prediction": CLASS_NAMES[class_index],
+            "confidence": confidence
+        }
+        return JSONResponse(content=response)
     
-    return JSONResponse(content=response)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Error during prediction: {e}"})
 
 # Root Endpoint with H1 HTML Response
 @app.get("/")
