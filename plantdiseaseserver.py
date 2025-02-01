@@ -13,6 +13,8 @@ app = FastAPI()
 # Load Model
 MODEL_PATH = "plant_disease_model.h5"
 
+print(tf.__version__)
+
 # Attempt to load the model with DepthwiseConv2D fix
 try:
     model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': tf.keras.layers.DepthwiseConv2D})
