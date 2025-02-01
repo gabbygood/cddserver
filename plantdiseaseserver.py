@@ -13,13 +13,13 @@ app = FastAPI()
 # Load Model
 MODEL_PATH = "plant_disease_model.h5"
 
-# Attempt to load the model with proper error handling
+# Attempt to load the model with DepthwiseConv2D fix
 try:
-    model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': layers.DepthwiseConv2D})
+    model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': tf.keras.layers.DepthwiseConv2D})
     print("✅ Model loaded successfully!")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
-    model = None
+    model = None  # Set to None if loading fails
 
 # Class Names
 CLASS_NAMES = [
@@ -39,11 +39,11 @@ CLASS_NAMES = [
 
 # Preprocess Image
 def preprocess_image(image_data):
-    # Open image from byte data, convert to RGB, and resize
+    """Convert image to RGB, resize, normalize, and prepare for prediction."""
     img = Image.open(io.BytesIO(image_data)).convert("RGB")
-    img = img.resize((224, 224))  # Resize to model input size
-    img_array = np.array(img).astype("float32") / 255.0  # Normalize
-    return np.expand_dims(img_array, axis=0)
+    img = img.resize((224, 224))  # Resize to match model input
+    img_array = np.array(img).astype("float32") / 255.0  # Normalize pixel values
+    return np.expand_dims(img_array, axis=0)  # Add batch dimension
 
 # Prediction Endpoint
 @app.post("/predict")
@@ -52,11 +52,11 @@ async def predict(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"error": "Model not loaded properly."})
 
     try:
-        # Read the image file
+        # Read and preprocess the image
         image_data = await file.read()
         img_array = preprocess_image(image_data)
 
-        # Predict using the model
+        # Run the model's prediction
         predictions = model.predict(img_array)
         class_index = np.argmax(predictions)
         confidence = float(np.max(predictions))
@@ -68,9 +68,9 @@ async def predict(file: UploadFile = File(...)):
         return JSONResponse(content=response)
     
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": f"Error during prediction: {e}"})
+        return JSONResponse(status_code=500, content={"error": f"Error during prediction: {str(e)}"})
 
-# Root Endpoint with H1 HTML Response
+# Root Endpoint with API status
 @app.get("/")
 async def root():
     html_content = """
