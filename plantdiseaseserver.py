@@ -28,7 +28,7 @@ print(np.__version__)
 
 # Attempt to load the model with DepthwiseConv2D fix
 try:
-    model = load_model(MODEL_PATH, compile=False)
+    model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': tf.keras.layers.DepthwiseConv2D})
     print("✅ Model loaded successfully!")
 except Exception as e:
     print(f"❌ Error loading model: {e}")

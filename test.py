@@ -16,7 +16,7 @@ MODEL_PATH = "plant_disease_model.h5"
 def load_trained_model():
     """Load and return the trained plant disease model."""
     try:
-        model = load_model(MODEL_PATH, custom_objects={'DepthwiseConv2D': tf.keras.layers.DepthwiseConv2D})
+        model = load_model(MODEL_PATH, compile=False)
         return model
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")

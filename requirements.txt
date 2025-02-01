@@ -5,3 +5,4 @@ tensorflow
 numpy
 Pillow
 python-multipart
+python_version==3.11
