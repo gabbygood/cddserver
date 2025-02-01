@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -63,7 +63,18 @@ async def predict(file: UploadFile = File(...)):
     
     return JSONResponse(content=response)
 
-# Root Endpoint
-@app.get("/test")
+# Root Endpoint with H1 HTML Response
+@app.get("/")
 async def root():
-    return {"message": "Plant Disease Detection API is running!"}
+    html_content = """
+    <html>
+        <head>
+            <title>API Status</title>
+        </head>
+        <body style="text-align: center; padding: 50px;">
+            <h1 style="color: green;">✅ API is running!</h1>
+            <p>Use the <code>/predict</code> endpoint to classify plant diseases.</p>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
