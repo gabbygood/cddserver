@@ -5,8 +5,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
 import io
+import json
 
-# **Set page config FIRST**
+# **Set page config**
 st.set_page_config(page_title="🌿 Plant Disease Detector", layout="centered")
 
 # Load Model
@@ -84,3 +85,48 @@ if uploaded_file is not None:
 
 st.markdown("---")
 st.markdown("🔗 Local Model is being used for predictions.")
+
+### **🟢 Add API Endpoint for React Native**
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
+
+app = FastAPI()
+
+# CORS (Allow frontend to communicate)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (update in production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    if not model:
+        return JSONResponse(status_code=500, content={"error": "Model not loaded properly."})
+    
+    try:
+        # Read and process the image
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data))
+        img_array = preprocess_image(image)
+
+        # Get prediction
+        predictions = model.predict(img_array)
+        class_index = np.argmax(predictions)
+        confidence = float(np.max(predictions))
+
+        response = {
+            "prediction": CLASS_NAMES[class_index],
+            "confidence": confidence
+        }
+        return JSONResponse(content=response)
+    
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Error during prediction: {str(e)}"})
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8501)  # Runs API on port 8501
