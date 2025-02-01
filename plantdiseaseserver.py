@@ -64,6 +64,6 @@ async def predict(file: UploadFile = File(...)):
     return JSONResponse(content=response)
 
 # Root Endpoint
-@app.get("/")
+@app.get("/test")
 async def root():
     return {"message": "Plant Disease Detection API is running!"}
