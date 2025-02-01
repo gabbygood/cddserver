@@ -14,6 +14,7 @@ app = FastAPI()
 MODEL_PATH = "plant_disease_model.h5"
 
 print(tf.__version__)
+print(np.__version__)
 
 # Attempt to load the model with DepthwiseConv2D fix
 try:
