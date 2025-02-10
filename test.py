@@ -45,7 +45,7 @@ def preprocess_image(image):
 st.title("🌱 Plant Disease Detection")
 st.write("Upload an image of a plant leaf to detect its disease.")
 
-uploaded_file = st.file_uploader("Upload a leaf image...", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Upload a leaf image...", type=["jpg", "png", "jpeg", "webp"])
 
 if uploaded_file is not None:
     # Display uploaded image
