@@ -1,31 +1,22 @@
 import streamlit as st
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
-import io
-import json
 
-# **Set page config**
-st.set_page_config(page_title="🌿 Plant Disease Detector", layout="centered")
-
-# Load Model
-MODEL_PATH = "plant_disease_model.h5"
+# Load TFLite Model
+TFLITE_MODEL_PATH = "plant_disease_model.tflite"
 
 @st.cache_resource
-def load_trained_model():
-    """Load and return the trained plant disease model."""
-    try:
-        model = load_model(MODEL_PATH, compile=False)
-        return model
-    except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
-        return None
+def load_model():
+    interpreter = tf.lite.Interpreter(model_path=TFLITE_MODEL_PATH)
+    interpreter.allocate_tensors()
+    return interpreter
 
-model = load_trained_model()
+interpreter = load_model()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
-# Class Labels
+# Class Names (same as before)
 CLASS_NAMES = [
     'Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust', 'Apple___healthy',
     'Blueberry___healthy', 'Cherry_(including_sour)___healthy', 'Cherry_(including_sour)___Powdery_mildew',
@@ -43,90 +34,34 @@ CLASS_NAMES = [
 
 # Preprocess Image
 def preprocess_image(image):
-    """Convert image to RGB, resize, normalize, and prepare for prediction."""
-    image = image.convert("RGB")
-    image = image.resize((224, 224))
-    img_array = img_to_array(image) / 255.0
+    """Convert image to RGB, resize, normalize, and prepare for TFLite model."""
+    img = image.convert("RGB")
+    img = img.resize((224, 224))  # Resize to model input size
+    img_array = np.array(img).astype("float32") / 255.0  # Normalize
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
 # Streamlit UI
-st.title("🌿 Plant Disease Detection System")
-st.markdown("Upload a plant leaf image to detect possible diseases.")
+st.title("🌱 Plant Disease Detection")
+st.write("Upload an image of a plant leaf to detect its disease.")
 
-# Upload image
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload a leaf image...", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    # Display image
+    # Display uploaded image
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Predict button
-    if st.button("🔍 Detect Disease"):
-        st.info("Processing image...")
-
-        if model:
-            try:
-                # Preprocess and predict
-                img_array = preprocess_image(image)
-                predictions = model.predict(img_array)
-                class_index = np.argmax(predictions)
-                confidence = float(np.max(predictions))
-
-                # Display results
-                st.success(f"✅ Prediction: {CLASS_NAMES[class_index]}")
-                st.write(f"📊 Confidence: {confidence * 100:.2f}%")
-            
-            except Exception as e:
-                st.error(f"⚠️ Error during prediction: {str(e)}")
-        else:
-            st.error("⚠️ Model is not loaded properly.")
-
-st.markdown("---")
-st.markdown("🔗 Local Model is being used for predictions.")
-
-### **🟢 Add API Endpoint for React Native**
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-
-app = FastAPI()
-
-# CORS (Allow frontend to communicate)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (update in production)
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    if not model:
-        return JSONResponse(status_code=500, content={"error": "Model not loaded properly."})
+    # Preprocess and predict
+    img_array = preprocess_image(image)
     
-    try:
-        # Read and process the image
-        image_data = await file.read()
-        image = Image.open(io.BytesIO(image_data))
-        img_array = preprocess_image(image)
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+    interpreter.invoke()
+    predictions = interpreter.get_tensor(output_details[0]['index'])
 
-        # Get prediction
-        predictions = model.predict(img_array)
-        class_index = np.argmax(predictions)
-        confidence = float(np.max(predictions))
+    # Get prediction result
+    class_index = np.argmax(predictions)
+    confidence = float(np.max(predictions))
 
-        response = {
-            "prediction": CLASS_NAMES[class_index],
-            "confidence": confidence
-        }
-        return JSONResponse(content=response)
-    
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": f"Error during prediction: {str(e)}"})
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8501)  # Runs API on port 8501
+    st.success(f"🩺 **Prediction:** {CLASS_NAMES[class_index]}")
+    st.info(f"🔬 **Confidence:** {confidence:.2%}")
