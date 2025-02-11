@@ -8,3 +8,6 @@ https://cddserver.onrender.com
 
 ### API Endpoint
 https://cddserver.onrender.com/predict
+
+
+### Remote From Laptop
